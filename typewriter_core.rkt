@@ -33,6 +33,18 @@
           (set-add known-parents (node-parent nd)))))
   (loop (game-nodes gm) (set)))
 
+(: fold-parents (-> game (Setof StoryNode)))
+(define (fold-parents gm)
+  (foldl
+   (λ ([nd : StoryNode] [known-parents : (Setof StoryNode)])
+     (if (root? nd)
+         (set-add known-parents nd)
+         (set-add known-parents (node-parent nd))))
+   (let ([n1 (car (game-nodes gm))])
+     ;; If this set is empty, it won't typecheck
+     (set (if (root? n1) n1 (node-parent n1))))
+   (game-nodes gm)))
+
 (: leaves (-> game (Setof StoryNode)))
 (define (leaves gm)
   (let ([nodes-with-kids (parents gm)])
