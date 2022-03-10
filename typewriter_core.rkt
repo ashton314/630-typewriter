@@ -87,3 +87,7 @@
                       (node id txt (hash-ref all-nodes prnt) auth))])
           (hash-set! all-nodes id me)
           me)])))))
+
+(: save-game (-> game Void))
+(define (save-game gm)
+  (void))
