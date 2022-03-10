@@ -3,9 +3,9 @@
 (provide (all-defined-out))
 
 (define-type StoryNode (U root node))
-(struct root ([prompt : String]) #:transparent)
-(struct node ([text : String] [parent : StoryNode] [author : String]) #:transparent)
-(struct game ([nodes : (Listof StoryNode)]) #:transparent)
+(struct root ([id : String] [prompt : String]) #:transparent)
+(struct node ([id : String] [text : String] [parent : StoryNode] [author : String]) #:transparent)
+(struct game ([id : String] [nodes : (Listof StoryNode)]) #:transparent)
 
 (: read-story (-> StoryNode (Listof String)))
 (define (read-story nd)
@@ -21,7 +21,7 @@
 
 (: game-add-node (-> game node game))
 (define (game-add-node gm nd)
-  (game (cons nd (game-nodes gm))))
+  (game (game-id gm) (cons nd (game-nodes gm))))
 
 (: parents (-> game (Setof StoryNode)))
 (define (parents gm)
