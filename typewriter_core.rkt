@@ -2,10 +2,16 @@
 
 (provide (all-defined-out))
 
+(require/typed "typewriter_storage.rkt"
+  [init-db! (-> Void)]
+  [nodes-from-game (-> Integer (Listof (Vector Integer String Integer String (U One Zero))))])
+
 (define-type StoryNode (U root node))
-(struct root ([id : String] [prompt : String]) #:transparent)
-(struct node ([id : String] [text : String] [parent : StoryNode] [author : String]) #:transparent)
-(struct game ([id : String] [nodes : (Listof StoryNode)]) #:transparent)
+(define-type NodeId Integer)
+(define-type GameId Integer)
+(struct root ([id : NodeId] [prompt : String]) #:transparent)
+(struct node ([id : NodeId] [text : String] [parent : StoryNode] [author : String]) #:transparent)
+(struct game ([id : GameId] [nodes : (Listof StoryNode)]) #:transparent)
 
 (: read-story (-> StoryNode (Listof String)))
 (define (read-story nd)
@@ -66,3 +72,18 @@
     [(eq? nd maybe-grandpa) #t]
     [(eq? (node-parent nd) maybe-grandpa) #t]
     [else (has-ancestor? (node-parent nd) maybe-grandpa)]))
+
+;;; Database interaction
+(: hydrate-game (-> Integer game))
+(define (hydrate-game game-id)
+  (let ([all-nodes : (HashTable NodeId StoryNode) (make-hash)])
+  (game
+   game-id
+   (for/list ([n (nodes-from-game game-id)])
+     (match n
+       [(vector id txt prnt auth rootp)
+        (let ([me (if (= 1 rootp)
+                      (root id txt)
+                      (node id txt (hash-ref all-nodes prnt) auth))])
+          (hash-set! all-nodes id me)
+          me)])))))
