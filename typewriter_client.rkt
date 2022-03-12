@@ -1,6 +1,7 @@
 #lang racket
 
-(require "typewriter_core.rkt")
+(require "typewriter_core.rkt"
+         "typewriter_storage.rkt")
 
 ; story-node string string -> story-node
 (define (new-installment leaf-node author text)
@@ -15,7 +16,7 @@
         [story (prompt "Story")])
     (new-installment node author story)))
 
-(define (story-repl [leaf (root)] [gm (game (list leaf))])
+(define (story-repl leaf gm)
   (displayln (if (root? leaf)
                  (format "Prompt: ~a" (root-prompt leaf))
                  (format "[~a]: ~a\n" (node-author leaf) (node-text leaf))))
@@ -34,5 +35,12 @@
         [(pregexp #px"^[0-9]+$" (list x))
          (story-repl (car (drop children (string->number x))) gm)]
         [_ (story-repl leaf)]))))
+
+(define (begin-game prompt [gid #f])
+  (init-db!)
+  ;; We have to get the game after calling init-db!
+  (let* ([the-game-id (or gid (new-game!))]
+         [the-root (new-node! the-game-id prompt "root" #t)])
+    (story-repl the-root (hydrate-game the-game-id))))
 
 ;; (story-repl (root "Beginning something epic..."))

@@ -3,8 +3,8 @@
 (provide (all-defined-out))
 
 (require/typed "typewriter_storage.rkt"
-  [init-db! (-> Void)]
-  [nodes-from-game (-> Integer (Listof (Vector Integer String Integer String (U One Zero))))])
+  [nodes-from-game (-> Integer (Listof (Vector Integer String Integer String (U One Zero))))]
+  [new-node! (-> NodeId String String Boolean NodeId)])
 
 (define-type StoryNode (U root node))
 (define-type NodeId Integer)
@@ -13,6 +13,7 @@
 (struct node ([id : NodeId] [text : String] [parent : StoryNode] [author : String]) #:transparent)
 (struct game ([id : GameId] [nodes : (Listof StoryNode)]) #:transparent)
 
+;;; Read the story starting at the root and going down to this leaf node.
 (: read-story (-> StoryNode (Listof String)))
 (define (read-story nd)
   (cond
@@ -21,13 +22,29 @@
     [(node? nd)
      (append (read-story (node-parent nd)) (list (node-text nd)))]))
 
+;;; Read *all* the stories!
 (: gather-game-stories (-> game (Listof (Listof String))))
 (define (gather-game-stories game)
   (map read-story (game-nodes game)))
 
+;;; Add a node to the game (with persistance)
 (: game-add-node (-> game node game))
+;; (define (game-add-node gm nd)
+;;   (let ([new-node-id (new-node! (parent-id nd) (node-text nd) (node-author nd) #f)])
+;;     (game (game-id gm)
+;;           (cons (node new-node-id (node-text nd) (node-parent nd) (node-author nd))
+;;                 (game-nodes gm)))))
 (define (game-add-node gm nd)
-  (game (game-id gm) (cons nd (game-nodes gm))))
+  (new-node! (parent-id nd) (node-text nd) (node-author nd) #f)
+  ;; Now re-fetch the game from the db
+  (hydrate-game (game-id gm)))
+
+(: parent-id (-> node NodeId))
+(define (parent-id nd)
+  (let ([prt (node-parent nd)])
+    (if (node? prt)
+        (node-id prt)
+        (root-id prt))))
 
 (: parents (-> game (Setof StoryNode)))
 (define (parents gm)
@@ -87,7 +104,3 @@
                       (node id txt (hash-ref all-nodes prnt) auth))])
           (hash-set! all-nodes id me)
           me)])))))
-
-(: save-game (-> game Void))
-(define (save-game gm)
-  (void))
