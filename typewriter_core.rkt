@@ -39,12 +39,23 @@
   ;; Now re-fetch the game from the db
   (hydrate-game (game-id gm)))
 
+(: fetch-node-by-id (-> game NodeId (U StoryNode False)))
+(define (fetch-node-by-id gm nid)
+  (findf (λ ([n : StoryNode]) (= (story-node-id n) nid))
+         (game-nodes gm)))
+
 (: parent-id (-> node NodeId))
 (define (parent-id nd)
   (let ([prt (node-parent nd)])
     (if (node? prt)
         (node-id prt)
         (root-id prt))))
+
+(: story-node-id (-> StoryNode NodeId))
+(define (story-node-id nd)
+  (if (node? nd)
+      (node-id nd)
+      (root-id nd)))
 
 (: parents (-> game (Setof StoryNode)))
 (define (parents gm)
