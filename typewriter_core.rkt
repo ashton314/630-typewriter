@@ -105,13 +105,14 @@
 (: hydrate-game (-> Integer game))
 (define (hydrate-game game-id)
   (let ([all-nodes : (HashTable NodeId StoryNode) (make-hash)])
-  (game
-   game-id
-   (for/list ([n (nodes-from-game game-id)])
-     (match n
-       [(vector id txt prnt auth rootp)
-        (let ([me (if (= 1 rootp)
-                      (root id txt)
-                      (node id txt (hash-ref all-nodes prnt) auth))])
-          (hash-set! all-nodes id me)
-          me)])))))
+    (game
+     game-id
+     (for/list ([n (nodes-from-game game-id)])
+       (pretty-print n)
+       (match n
+         [(vector id txt prnt auth rootp)
+          (let ([me (if (= 1 rootp)
+                        (root id txt)
+                        (node id txt (hash-ref all-nodes prnt) auth))])
+            (hash-set! all-nodes id me)
+            me)])))))
