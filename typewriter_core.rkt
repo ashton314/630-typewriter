@@ -20,7 +20,7 @@
     [(root? nd)
      (list (root-prompt nd))]
     [(node? nd)
-     (append (read-story (node-parent nd)) (list (node-text nd)))]))
+     (append (read-story (node-parent nd)) (list (format "> ~a" (node-text nd))))]))
 
 ;;; Read *all* the stories!
 (: gather-game-stories (-> game (Listof (Listof String))))
@@ -28,16 +28,15 @@
   (map read-story (game-nodes game)))
 
 ;;; Add a node to the game (with persistance)
-(: game-add-node (-> game node game))
-;; (define (game-add-node gm nd)
-;;   (let ([new-node-id (new-node! (parent-id nd) (node-text nd) (node-author nd) #f)])
-;;     (game (game-id gm)
-;;           (cons (node new-node-id (node-text nd) (node-parent nd) (node-author nd))
-;;                 (game-nodes gm)))))
-(define (game-add-node gm nd)
-  (new-node! (parent-id nd) (node-text nd) (node-author nd) #f)
-  ;; Now re-fetch the game from the db
-  (hydrate-game (game-id gm)))
+(: game-add-node (-> game String String (U StoryNode False) (Pairof StoryNode game)))
+(define (game-add-node gm text author parent)
+  (let* ([the-node (new-node! (if parent (story-node-id parent) (game-id gm)) text author (not parent))]
+         ;; Now re-fetch the game from the db
+         [the-game (hydrate-game (game-id gm))]
+         [full-node (fetch-node-by-id the-game the-node)])
+    (if (not full-node)
+        (error "Could not add new node for some reason")
+        (cons full-node the-game))))
 
 (: fetch-node-by-id (-> game NodeId (U StoryNode False)))
 (define (fetch-node-by-id gm nid)
@@ -108,7 +107,6 @@
     (game
      game-id
      (for/list ([n (nodes-from-game game-id)])
-       (pretty-print n)
        (match n
          [(vector id txt prnt auth rootp)
           (let ([me (if (= 1 rootp)

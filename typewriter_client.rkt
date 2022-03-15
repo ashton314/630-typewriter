@@ -3,20 +3,10 @@
 (require "typewriter_core.rkt"
          "typewriter_storage.rkt")
 
-; story-node string string -> story-node
-(define (new-installment parent-node author text)
-  (node 0 text parent-node author))
-
 (define (prompt txt)
   (printf "~a: " txt)
   (read-line))
 
-(define (write-installment gm parent-node)
-  (let* ([author (prompt "Author")]
-         [story (prompt "Story")]
-         [new-node (new-installment parent-node author story)])
-    (pretty-print new-node)
-    (fetch-node-by-id (game-add-node gm new-node) (node-id new-node))))
 
 (define (story-repl leaf gm)
   (displayln (if (root? leaf)
@@ -27,26 +17,36 @@
           [i (in-naturals)])
       (printf "(~a) [~a]: ~a\n" i (node-author chld) (node-text chld)))
     (let ([action (prompt "\n(0-9: move; r: read; u: up; i: write; q: quit)")])
+      (printf "\n-----\n")
       (match action
         ["q" (displayln "Auf Wiedersehen!")]
-        ["i" (let ([new-leaf (write-installment gm leaf)])
-               (story-repl new-leaf (hydrate-game (game-id gm))))]
+        ["i" (let-values ([(new-leaf new-gm) (add-story leaf gm)])
+               (story-repl new-leaf new-gm))]
         ["u" (story-repl (node-parent leaf) gm)] ; bug here: what if at root?
         ["r" (map displayln (read-story leaf))
              (story-repl leaf gm)]
         [(pregexp #px"^[0-9]+$" (list x))
          (story-repl (car (drop children (string->number x))) gm)]
-        [_ (story-repl leaf)]))))
+        [_ (story-repl leaf (refresh-game gm))]))))
 
-(define (begin-game prompt [gid #f])
+(define (add-story parent gm)
+  (let ([auth (prompt "Author")]
+        [txt (prompt "Story")])
+    (match (game-add-node gm txt auth parent)
+      [(cons new-leaf new-game)
+       (values new-leaf new-game)])))
+
+(define (begin-new-game starting-prompt)
   (init-db!)
-  ;; We have to get the game after calling init-db!
-  (let* ([the-game-id (or gid (new-game!))]
-         [the-root (new-node! the-game-id prompt "root" #t)])
-    (printf "New game id: ~a\n" the-game-id)
-    (printf "Root ID: ~a\n" the-root)
-    (let* ([the-game (hydrate-game the-game-id)]
-           [root-node (fetch-node-by-id the-game the-root)])
-      (story-repl root-node (hydrate-game the-game-id)))))
+  (let* ([gm-id (new-game!)]
+         [game-info (game-add-node (hydrate-game gm-id) starting-prompt "nobody" #f)])
+    (story-repl (car game-info) (cdr game-info))))
+
+(define (resume-game gid)
+  (let ([game (hydrate-game gid)])
+    (story-repl (car (set->list (leaves game))) game)))
+
+(define (refresh-game gm)
+  (hydrate-game (game-id gm)))
 
 ;; (story-repl (root "Beginning something epic..."))
